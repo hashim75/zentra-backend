@@ -1,0 +1,11 @@
+/Users/hash/POS/src/Domain/bin/Debug/net10.0/Domain.deps.json
+/Users/hash/POS/src/Domain/bin/Debug/net10.0/Domain.dll
+/Users/hash/POS/src/Domain/bin/Debug/net10.0/Domain.pdb
+/Users/hash/POS/src/Domain/obj/Debug/net10.0/Domain.GeneratedMSBuildEditorConfig.editorconfig
+/Users/hash/POS/src/Domain/obj/Debug/net10.0/Domain.AssemblyInfoInputs.cache
+/Users/hash/POS/src/Domain/obj/Debug/net10.0/Domain.AssemblyInfo.cs
+/Users/hash/POS/src/Domain/obj/Debug/net10.0/Domain.csproj.CoreCompileInputs.cache
+/Users/hash/POS/src/Domain/obj/Debug/net10.0/Domain.dll
+/Users/hash/POS/src/Domain/obj/Debug/net10.0/refint/Domain.dll
+/Users/hash/POS/src/Domain/obj/Debug/net10.0/Domain.pdb
+/Users/hash/POS/src/Domain/obj/Debug/net10.0/ref/Domain.dll
