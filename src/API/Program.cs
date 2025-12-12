@@ -17,9 +17,11 @@ var builder = WebApplication.CreateBuilder(args);
 // 1. Add Layers
 builder.Services.AddApplicationServices();
 
-// 2. Add Database
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
-    ?? "Host=127.0.0.1;Port=5432;Database=khanpurpos;Username=admin;Password=password123";
+// --- 2. DATABASE CONNECTION (UPDATED FOR RAILWAY) ---
+// Railway injects the connection string as an Environment Variable.
+// We check that first. If missing, we fallback to appsettings.json.
+var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
+                       ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString,
@@ -27,14 +29,16 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 builder.Services.AddScoped<IApplicationDbContext>(provider => 
     provider.GetRequiredService<ApplicationDbContext>());
-// Inside Program.cs, before builder.Build()
-builder.Services.AddTransient<Application.Common.Interfaces.ITokenService, Infrastructure.Identity.TokenService>();
-// 3. Add Identity (Users, Roles, Login) - [UPDATED FOR ROLES]
-builder.Services.AddIdentity<ApplicationUser, IdentityRole>() // <--- Added IdentityRole
+
+// 3. Add Identity
+builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
 
 builder.Services.AddTransient<IIdentityService, IdentityService>();
+
+// --- REGISTER TOKEN SERVICE (Crucial for AuthController) ---
+builder.Services.AddScoped<ITokenService, TokenService>(); 
 
 // 4. Add Multi-Tenancy & Security
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
@@ -99,30 +103,50 @@ builder.Services.AddSwaggerGen(option =>
     });
 });
 
+// --- 8. CORS (UPDATED TO ALLOW ALL) ---
+// Essential for the Desktop App to connect from anywhere
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowReactApp", policy =>
+    options.AddPolicy("AllowAll", policy =>
     {
-        policy.WithOrigins("http://localhost:5173")
-              .AllowAnyHeader()
-              .AllowAnyMethod();
+        policy.AllowAnyOrigin()
+              .AllowAnyMethod()
+              .AllowAnyHeader();
     });
 });
 
 var app = builder.Build();
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// --- 9. PIPELINE CONFIGURATION ---
+
+// ENABLE SWAGGER IN PRODUCTION (For your Manual Registration)
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
-app.UseCors("AllowReactApp");
+
+// USE THE NEW CORS POLICY
+app.UseCors("AllowAll");
 
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+// --- 10. AUTO-MIGRATE DATABASE (For Railway) ---
+// This ensures tables are created automatically when deployed
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    try 
+    {
+        db.Database.Migrate();
+    }
+    catch (Exception ex)
+    {
+        // Log error or ignore if DB already exists
+        Console.WriteLine($"Migration Error: {ex.Message}");
+    }
+}
 
 app.Run();

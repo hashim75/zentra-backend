@@ -39,7 +39,7 @@ export default function StaffPage() {
     try {
       const token = localStorage.getItem("token");
       // This fetches the list of all users to display in the table
-      const res = await axios.get("http://localhost:5097/api/Users", {
+      const res = await axios.get("/Users", {
         headers: { Authorization: `Bearer ${token}` }
       });
       setUsers(res.data);
@@ -61,7 +61,7 @@ export default function StaffPage() {
       const token = localStorage.getItem("token");
       
       // POST to the correct Auth endpoint
-      await axios.post("http://localhost:5097/api/Auth/create-staff", {
+      await axios.post("/Auth/create-staff", {
           username: formData.username,
           password: formData.password,
           role: formData.role
@@ -84,7 +84,7 @@ export default function StaffPage() {
     if (!confirm("Delete this staff account? They will no longer be able to login.")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5097/api/Users/${id}`, {
+      await axios.delete(`/Users/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMsg("User Deleted");

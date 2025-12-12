@@ -19,18 +19,25 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // --- API URL ---
+  const API_URL = "https://zentra-backend-production-557c.up.railway.app/api/Auth/login";
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
 
     try {
-      const response = await axios.post("http://localhost:5097/api/Auth/login", {
+      // UPDATED LINK HERE
+      const response = await axios.post(API_URL, {
         username: username,
         password: password,
       });
 
       localStorage.setItem("token", response.data.token);
+      // Optional: Save shop name if backend sends it, otherwise default
+      localStorage.setItem("shopName", "ZentraRetail"); 
+      
       window.location.href = "/dashboard";
 
     } catch (err: any) {
@@ -62,7 +69,7 @@ export default function LoginPage() {
               </Box>
             </Box>
 
-            {/* NEW BRAND NAME */}
+            {/* BRAND NAME */}
             <Typography variant="h4" component="h1" fontWeight="bold" color="#333" gutterBottom>
               ZentraRetail
             </Typography>

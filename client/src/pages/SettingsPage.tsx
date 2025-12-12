@@ -4,7 +4,7 @@ import {
   Box, Container, Typography, Paper, TextField, Button, 
   Tabs, Tab, Table, TableBody, TableCell, TableContainer, 
   TableHead, TableRow,  Snackbar, Alert, 
-  CircularProgress, Chip
+  CircularProgress, Chip, IconButton
 } from "@mui/material";
 import { 
   Save, History, Store, ArrowBack, Refresh 
@@ -34,6 +34,9 @@ export default function SettingsPage() {
   const [logs, setLogs] = useState<AuditLog[]>([]);
   const [loadingLogs, setLoadingLogs] = useState(false);
 
+  // --- API BASE URL ---
+  const API_BASE = "https://zentra-backend-production-557c.up.railway.app/api";
+
   // Load Settings from LocalStorage on mount
   useEffect(() => {
     const savedName = localStorage.getItem("shopName");
@@ -61,7 +64,8 @@ export default function SettingsPage() {
     setLoadingLogs(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5097/api/AuditLogs", {
+      // UPDATED LINK HERE
+      const res = await axios.get(`${API_BASE}/AuditLogs`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setLogs(res.data);
@@ -182,13 +186,4 @@ export default function SettingsPage() {
       </Container>
     </Box>
   );
-}
-
-// Simple Icon Button wrapper to avoid errors if you haven't imported it in previous files
-function IconButton({ onClick, children, sx }: any) {
-    return (
-        <Button onClick={onClick} sx={{ minWidth: 40, width: 40, height: 40, borderRadius: '50%', p: 0, ...sx }}>
-            {children}
-        </Button>
-    )
 }

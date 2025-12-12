@@ -48,6 +48,9 @@ export default function MainLayout() {
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [syncMsg, setSyncMsg] = useState("");
 
+  // --- API BASE URL ---
+  const API_BASE = "https://zentra-backend-production-557c.up.railway.app/api";
+
   // --- 1. INITIAL LOAD & AUTH ---
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -104,8 +107,8 @@ export default function MainLayout() {
         const token = localStorage.getItem("token");
         for (const invoice of pending) {
             const { tempId, date, ...cleanInvoice } = invoice; 
-            // Replace with your actual LIVE API URL if deploying
-            await axios.post("http://localhost:5097/api/Invoices", cleanInvoice, {
+            // UPDATED LINK HERE
+            await axios.post(`${API_BASE}/Invoices`, cleanInvoice, {
                 headers: { Authorization: `Bearer ${token}` }
             });
         }

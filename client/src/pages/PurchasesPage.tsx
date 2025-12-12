@@ -62,6 +62,9 @@ export default function PurchasesPage() {
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
 
+  // --- API BASE URL ---
+  const API_BASE = "https://zentra-backend-production-557c.up.railway.app/api";
+
   useEffect(() => {
     loadData();
   }, []);
@@ -71,9 +74,10 @@ export default function PurchasesPage() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
       
+      // UPDATED LINKS HERE
       const [supRes, prodRes] = await Promise.all([
-        axios.get("http://localhost:5097/api/Suppliers", { headers }),
-        axios.get("http://localhost:5097/api/Products", { headers })
+        axios.get(`${API_BASE}/Suppliers`, { headers }),
+        axios.get(`${API_BASE}/Products`, { headers })
       ]);
 
       setSuppliers(supRes.data);
@@ -151,7 +155,8 @@ export default function PurchasesPage() {
         }))
       };
 
-      await axios.post("http://localhost:5097/api/Purchases", payload, {
+      // UPDATED LINK HERE
+      await axios.post(`${API_BASE}/Purchases`, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

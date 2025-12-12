@@ -28,7 +28,7 @@ interface Invoice {
   netAmount: number;
   paymentMethod: string;
   status: string; 
-  // ADDED THIS: The list of products
+  // The list of products
   items: InvoiceItem[]; 
 }
 
@@ -46,6 +46,9 @@ export default function SalesHistoryPage() {
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
 
+  // --- API BASE URL ---
+  const API_BASE = "https://zentra-backend-production-557c.up.railway.app/api";
+
   useEffect(() => {
     loadData();
   }, []);
@@ -54,7 +57,8 @@ export default function SalesHistoryPage() {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5097/api/Invoices", {
+      // UPDATED LINK HERE
+      const res = await axios.get(`${API_BASE}/Invoices`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       // Sort by newest first
@@ -89,7 +93,8 @@ export default function SalesHistoryPage() {
     if (!selectedInvoiceId) return;
     try {
         const token = localStorage.getItem("token");
-        await axios.post(`http://localhost:5097/api/Invoices/${selectedInvoiceId}/return`, {}, {
+        // UPDATED LINK HERE
+        await axios.post(`${API_BASE}/Invoices/${selectedInvoiceId}/return`, {}, {
             headers: { Authorization: `Bearer ${token}` }
         });
         
@@ -102,7 +107,7 @@ export default function SalesHistoryPage() {
     }
   };
 
-  // --- PRINT RECEIPT (UPDATED) ---
+  // --- PRINT RECEIPT ---
   const handlePrint = (invoice: Invoice) => {
     const shopName = localStorage.getItem("shopName") || "ZentraRetail";
     const custName = invoice.customer?.name || "Walking Customer";

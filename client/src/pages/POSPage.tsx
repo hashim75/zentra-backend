@@ -59,6 +59,9 @@ export default function POSPage() {
   const [msg, setMsg] = useState("");
   const [error, setError] = useState("");
 
+  // --- API BASE URL ---
+  const API_BASE = "https://zentra-backend-production-557c.up.railway.app/api";
+
   useEffect(() => {
     loadData();
   }, []);
@@ -68,9 +71,10 @@ export default function POSPage() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
 
+      // UPDATED LINKS HERE
       const [prodRes, custRes] = await Promise.all([
-        axios.get("http://localhost:5097/api/Products", { headers }),
-        axios.get("http://localhost:5097/api/Customers", { headers })
+        axios.get(`${API_BASE}/Products`, { headers }),
+        axios.get(`${API_BASE}/Customers`, { headers })
       ]);
 
       setProducts(prodRes.data);
@@ -185,7 +189,8 @@ export default function POSPage() {
     // --- ONLINE CHECKOUT ---
     try {
         const token = localStorage.getItem("token");
-        await axios.post("http://your-live-api-url.com/api/Invoices", payload, {
+        // UPDATED LINK HERE
+        await axios.post(`${API_BASE}/Invoices`, payload, {
             headers: { Authorization: `Bearer ${token}` }
         });
 

@@ -39,11 +39,15 @@ export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // --- API URL ---
+  const API_URL = "https://zentra-backend-production-557c.up.railway.app/api/Dashboard";
+
   const fetchStats = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const response = await axios.get(`http://localhost:5097/api/Dashboard?_=${new Date().getTime()}`, {
+      // UPDATED LINK HERE
+      const response = await axios.get(`${API_URL}?_=${new Date().getTime()}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       setStats(response.data);

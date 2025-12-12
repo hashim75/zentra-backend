@@ -39,6 +39,9 @@ export default function ExpensesPage() {
     date: new Date().toISOString().split('T')[0] // Default to Today
   });
 
+  // --- API URL ---
+  const API_URL = "https://zentra-backend-production-557c.up.railway.app/api/Expenses";
+
   useEffect(() => {
     loadData();
   }, []);
@@ -46,7 +49,8 @@ export default function ExpensesPage() {
   const loadData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5097/api/Expenses", {
+      // UPDATED LINK HERE
+      const res = await axios.get(API_URL, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setExpenses(res.data);
@@ -80,7 +84,8 @@ export default function ExpensesPage() {
         date: new Date(formData.date).toISOString()
       };
 
-      await axios.post("http://localhost:5097/api/Expenses", payload, {
+      // UPDATED LINK HERE
+      await axios.post(API_URL, payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
 
@@ -101,7 +106,8 @@ export default function ExpensesPage() {
     if (!confirm("Delete this expense record?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5097/api/Expenses/${id}`, {
+      // UPDATED LINK HERE
+      await axios.delete(`${API_URL}/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       loadData();

@@ -50,11 +50,15 @@ export default function ReportsPage() {
   // Ref for PDF Capture
   const reportRef = useRef<HTMLDivElement>(null);
 
+  // --- API URL ---
+  const API_URL = "https://zentra-backend-production-557c.up.railway.app/api/Reports/generate";
+
   const fetchReports = async () => {
     setLoading(true);
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.post("http://localhost:5097/api/Reports/generate", {
+      // UPDATED LINK HERE
+      const res = await axios.post(API_URL, {
         from: dateFrom,
         to: dateTo
       }, { headers: { Authorization: `Bearer ${token}` } });

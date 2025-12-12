@@ -23,10 +23,9 @@ interface Product {
   sku: string;
   salePrice: number;
   stockQuantity: number;
-  lowStockAlert: number; // Added this to interface
+  lowStockAlert: number; 
   categoryName: string;
-  categoryId: string; // Needed for filtering
-  // Note: CostPrice is hidden for security in list, so it might show as 0 in edit unless we fetch detail
+  categoryId: string; 
 }
 
 export default function InventoryPage() {
@@ -43,7 +42,7 @@ export default function InventoryPage() {
 
   // Modal State (Add/Edit Product)
   const [open, setOpen] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null); // <--- Track Edit Mode
+  const [editingId, setEditingId] = useState<string | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -65,6 +64,9 @@ export default function InventoryPage() {
   // Alerts
   const [msg, setMsg] = useState("");
 
+  // --- API BASE URL ---
+  const API_BASE = "https://zentra-backend-production-557c.up.railway.app/api";
+
   useEffect(() => {
     loadData();
   }, []);
@@ -74,9 +76,10 @@ export default function InventoryPage() {
       const token = localStorage.getItem("token");
       const headers = { Authorization: `Bearer ${token}` };
       
+      // UPDATED LINKS HERE
       const [prodRes, catRes] = await Promise.all([
-        axios.get("http://localhost:5097/api/Products", { headers }),
-        axios.get("http://localhost:5097/api/Categories", { headers })
+        axios.get(`${API_BASE}/Products`, { headers }),
+        axios.get(`${API_BASE}/Categories`, { headers })
       ]);
 
       setProducts(prodRes.data);
@@ -90,17 +93,17 @@ export default function InventoryPage() {
 
   // --- OPEN EDIT MODAL ---
   const handleEdit = (product: Product) => {
-    setEditingId(product.id); // Set ID so we know we are updating
+    setEditingId(product.id); 
     setFormData({
         name: product.name,
         barcode: product.barcode,
         sku: product.sku,
         salePrice: product.salePrice.toString(),
-        costPrice: "", // Note: API List doesn't send cost price for security. User must re-enter or we need a Detail API.
+        costPrice: "", 
         stockQuantity: product.stockQuantity.toString(),
         lowStockAlert: product.lowStockAlert.toString(),
-        categoryId: product.categoryId || "", // Handle if null
-        isExpireable: false, // Defaulting as these aren't in list DTO yet
+        categoryId: product.categoryId || "", 
+        isExpireable: false, 
         expiryDate: ""
     });
     setOpen(true);
@@ -114,7 +117,7 @@ export default function InventoryPage() {
       
       const payload = {
         ...formData,
-        id: editingId, // Important for Update
+        id: editingId, 
         salePrice: Number(formData.salePrice),
         costPrice: Number(formData.costPrice),
         stockQuantity: Number(formData.stockQuantity),
@@ -124,11 +127,13 @@ export default function InventoryPage() {
 
       if (editingId) {
         // --- UPDATE LOGIC (PUT) ---
-        await axios.put(`http://localhost:5097/api/Products/${editingId}`, payload, { headers });
+        // UPDATED LINK HERE
+        await axios.put(`${API_BASE}/Products/${editingId}`, payload, { headers });
         setMsg("Product Updated Successfully!");
       } else {
         // --- CREATE LOGIC (POST) ---
-        await axios.post("http://localhost:5097/api/Products", payload, { headers });
+        // UPDATED LINK HERE
+        await axios.post(`${API_BASE}/Products`, payload, { headers });
         setMsg("Product Added Successfully!");
       }
 
@@ -146,7 +151,8 @@ export default function InventoryPage() {
     if (!newCatName) return;
     try {
         const token = localStorage.getItem("token");
-        const res = await axios.post("http://localhost:5097/api/Categories", {
+        // UPDATED LINK HERE
+        const res = await axios.post(`${API_BASE}/Categories`, {
             name: newCatName,
             description: "Quick Added"
         }, { headers: { Authorization: `Bearer ${token}` } });
@@ -168,7 +174,8 @@ export default function InventoryPage() {
     if(!confirm("Are you sure you want to delete this product?")) return;
     try {
         const token = localStorage.getItem("token");
-        await axios.delete(`http://localhost:5097/api/Products/${id}`, {
+        // UPDATED LINK HERE
+        await axios.delete(`${API_BASE}/Products/${id}`, {
             headers: { Authorization: `Bearer ${token}` }
         });
         setMsg("Product Deleted!");
@@ -180,7 +187,7 @@ export default function InventoryPage() {
 
   const handleCloseDialog = () => {
     setOpen(false);
-    setEditingId(null); // Reset Edit Mode
+    setEditingId(null); 
     setFormData({
         name: "", barcode: "", sku: "", salePrice: "", costPrice: "",
         stockQuantity: "", lowStockAlert: "5", categoryId: "",
@@ -191,7 +198,6 @@ export default function InventoryPage() {
   // --- SMART FILTER LOGIC ---
   const filteredProducts = products.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchTerm.toLowerCase()) || p.barcode.includes(searchTerm);
-    // Safe check for categoryId if it's undefined
     const matchesCategory = categoryFilter === "All" || p.categoryId === categoryFilter; 
     return matchesSearch && matchesCategory;
   });
@@ -212,7 +218,7 @@ export default function InventoryPage() {
             variant="contained" 
             startIcon={<Add />} 
             onClick={() => setOpen(true)}
-            sx={{ bgcolor: "#10b981", "&:hover": { bgcolor: "#059669" }, py: 1.5, px: 3, fontWeight: 'bold' }}
+            sx={{ bgcolor: "#10b981", "&:hover": { bgcolor: "#059669", py: 1.5, px: 3, fontWeight: 'bold' } }}
           >
             Add New Product
           </Button>
@@ -293,7 +299,6 @@ export default function InventoryPage() {
                     </TableCell>
                     <TableCell>Rs. {p.salePrice.toLocaleString()}</TableCell>
                     <TableCell align="right">
-                        {/* --- EDITED: ADDED ONCLICK HANDLER --- */}
                         <IconButton size="small" color="primary" onClick={() => handleEdit(p)}>
                             <Edit fontSize="small" />
                         </IconButton>
@@ -332,7 +337,7 @@ export default function InventoryPage() {
                             ))}
                         </Select>
                     </FormControl>
-                    {!editingId && ( // Only show Quick Add Category in Create mode to be safe
+                    {!editingId && (
                         <Tooltip title="Create New Category">
                             <Button variant="contained" sx={{ bgcolor: "#10b981", minWidth: '50px' }} onClick={() => setOpenCatDialog(true)}>
                                 <Add />

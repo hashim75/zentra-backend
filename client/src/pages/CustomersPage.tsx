@@ -46,6 +46,9 @@ export default function CustomersPage() {
   // Notifications
   const [msg, setMsg] = useState("");
 
+  // --- API URL ---
+  const API_URL = "https://zentra-backend-production-557c.up.railway.app/api/Customers";
+
   useEffect(() => {
     loadData();
   }, []);
@@ -53,7 +56,8 @@ export default function CustomersPage() {
   const loadData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5097/api/Customers", {
+      // UPDATED LINK HERE
+      const res = await axios.get(API_URL, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setCustomers(res.data);
@@ -83,12 +87,14 @@ export default function CustomersPage() {
       
       // Basic Update/Create Logic
       if(selectedCustomer) {
-         await axios.put(`http://localhost:5097/api/Customers/${selectedCustomer.id}`, {
+         // UPDATED LINK HERE
+         await axios.put(`${API_URL}/${selectedCustomer.id}`, {
              ...selectedCustomer, ...formData
          }, { headers: { Authorization: `Bearer ${token}` } });
          setMsg("Customer Updated!");
       } else {
-         await axios.post("http://localhost:5097/api/Customers", formData, {
+         // UPDATED LINK HERE
+         await axios.post(API_URL, formData, {
             headers: { Authorization: `Bearer ${token}` }
          });
          setMsg("Customer Created!");
@@ -112,8 +118,8 @@ export default function CustomersPage() {
     
     try {
         const token = localStorage.getItem("token");
-        // We update the customer record directly (In a real app, you'd post to a 'Payments' table)
-        await axios.put(`http://localhost:5097/api/Customers/${selectedCustomer.id}`, {
+        // UPDATED LINK HERE
+        await axios.put(`${API_URL}/${selectedCustomer.id}`, {
             ...selectedCustomer,
             creditBalance: newBalance
         }, { headers: { Authorization: `Bearer ${token}` } });
@@ -133,7 +139,8 @@ export default function CustomersPage() {
     if (!confirm("Are you sure? This cannot be undone.")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5097/api/Customers/${id}`, {
+      // UPDATED LINK HERE
+      await axios.delete(`${API_URL}/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMsg("Customer Deleted");

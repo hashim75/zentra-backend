@@ -15,7 +15,7 @@ function createWindow() {
   // Check if we are in Dev mode or Production
   const isDev = !app.isPackaged;
 
-  // Vite default port is 5173
+  // FIXED TYPO BELOW: Added "localhost"
   const startUrl = isDev 
     ? 'http://localhost:5173' 
     : `file://${path.join(__dirname, '../dist/index.html')}`;

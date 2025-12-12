@@ -38,12 +38,16 @@ export default function SuppliersPage() {
   const [formData, setFormData] = useState({ name: "", contactPerson: "", phoneNumber: "" });
   const [msg, setMsg] = useState("");
 
+  // --- API BASE URL ---
+  const API_BASE = "https://zentra-backend-production-557c.up.railway.app/api";
+
   useEffect(() => { loadData(); }, []);
 
   const loadData = async () => {
     try {
       const token = localStorage.getItem("token");
-      const res = await axios.get("http://localhost:5097/api/Suppliers", {
+      // UPDATED LINK HERE
+      const res = await axios.get(`${API_BASE}/Suppliers`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSuppliers(res.data);
@@ -64,7 +68,8 @@ export default function SuppliersPage() {
     if (!formData.name) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.post("http://localhost:5097/api/Suppliers", formData, {
+      // UPDATED LINK HERE
+      await axios.post(`${API_BASE}/Suppliers`, formData, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setOpen(false);
@@ -79,7 +84,8 @@ export default function SuppliersPage() {
     if(!selectedSupplier || !paymentAmount) return;
     try {
         const token = localStorage.getItem("token");
-        await axios.post("http://localhost:5097/api/Suppliers/pay", {
+        // UPDATED LINK HERE
+        await axios.post(`${API_BASE}/Suppliers/pay`, {
             supplierId: selectedSupplier.id,
             amount: Number(paymentAmount)
         }, { headers: { Authorization: `Bearer ${token}` } });
@@ -97,7 +103,8 @@ export default function SuppliersPage() {
     if (!confirm("Delete this supplier?")) return;
     try {
       const token = localStorage.getItem("token");
-      await axios.delete(`http://localhost:5097/api/Suppliers/${id}`, {
+      // UPDATED LINK HERE
+      await axios.delete(`${API_BASE}/Suppliers/${id}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       loadData();
