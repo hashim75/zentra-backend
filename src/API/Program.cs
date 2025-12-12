@@ -4,6 +4,7 @@ using Application;
 using Application.Common.Interfaces;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
+
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -17,9 +18,8 @@ var builder = WebApplication.CreateBuilder(args);
 // 1. Add Layers
 builder.Services.AddApplicationServices();
 
-// --- 2. DATABASE CONNECTION (UPDATED FOR RAILWAY) ---
-// Railway injects the connection string as an Environment Variable.
-// We check that first. If missing, we fallback to appsettings.json.
+// --- 2. DATABASE CONNECTION ---
+// Priority: Railway Environment Variable -> Local AppSettings
 var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
                        ?? builder.Configuration.GetConnectionString("DefaultConnection");
 
@@ -36,8 +36,6 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddDefaultTokenProviders();
 
 builder.Services.AddTransient<IIdentityService, IdentityService>();
-
-// --- REGISTER TOKEN SERVICE (Crucial for AuthController) ---
 builder.Services.AddScoped<ITokenService, TokenService>(); 
 
 // 4. Add Multi-Tenancy & Security
@@ -103,8 +101,7 @@ builder.Services.AddSwaggerGen(option =>
     });
 });
 
-// --- 8. CORS (UPDATED TO ALLOW ALL) ---
-// Essential for the Desktop App to connect from anywhere
+// 8. CORS
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
@@ -117,15 +114,12 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
-// --- 9. PIPELINE CONFIGURATION ---
+// --- PIPELINE CONFIGURATION ---
 
-// ENABLE SWAGGER IN PRODUCTION (For your Manual Registration)
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
-
-// USE THE NEW CORS POLICY
 app.UseCors("AllowAll");
 
 app.UseAuthentication();
@@ -133,19 +127,32 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// --- 10. AUTO-MIGRATE DATABASE (For Railway) ---
-// This ensures tables are created automatically when deployed
+// --- 9. AUTO-MIGRATE & SEED DATA (CRITICAL FIX) ---
 using (var scope = app.Services.CreateScope())
 {
-    var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+    var services = scope.ServiceProvider;
     try 
     {
-        db.Database.Migrate();
+        var context = services.GetRequiredService<ApplicationDbContext>();
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
+
+        // 1. Create Database Tables
+        await context.Database.MigrateAsync();
+
+        // 2. Create Roles if they don't exist
+        string[] roleNames = { "Admin", "Cashier" };
+        foreach (var roleName in roleNames)
+        {
+            if (!await roleManager.RoleExistsAsync(roleName))
+            {
+                await roleManager.CreateAsync(new IdentityRole(roleName));
+            }
+        }
     }
     catch (Exception ex)
     {
-        // Log error or ignore if DB already exists
-        Console.WriteLine($"Migration Error: {ex.Message}");
+        // Log errors to Railway Console
+        Console.WriteLine($"ERROR During Migration/Seeding: {ex.Message}");
     }
 }
 
