@@ -4,7 +4,6 @@ using Application;
 using Application.Common.Interfaces;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
-
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -16,27 +15,45 @@ using Npgsql; // Needed for connection string building
 
 var builder = WebApplication.CreateBuilder(args);
 
-// 1. Add Layers
-builder.Services.AddApplicationServices();
+// --- 1. ROBUST DATABASE CONNECTION LOGIC ---
+// We start by checking for the Railway Environment Variable
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL");
+string connectionString = "";
 
-// --- 2. DATABASE CONNECTION (FIXED FOR RAILWAY) ---
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL"); // Railway's default var
-
-// If running on Railway, parse the URL. Otherwise use local setting.
 if (!string.IsNullOrEmpty(databaseUrl))
 {
-    connectionString = BuildConnectionString(databaseUrl);
+    // CASE 1: Found Railway Database
+    Console.WriteLine("✅ FOUND RAILWAY DATABASE URL!");
+    try 
+    {
+        connectionString = BuildConnectionString(databaseUrl);
+        Console.WriteLine("✅ Successfully parsed Railway Connection String.");
+    }
+    catch(Exception ex)
+    {
+        Console.WriteLine($"❌ Error parsing Railway URL: {ex.Message}");
+        // Fallback or crash intentionally so we know
+        throw new Exception("Could not parse Railway Database URL");
+    }
+}
+else
+{
+    // CASE 2: No Railway DB found - Using Localhost
+    Console.WriteLine("⚠️ NO DATABASE_URL FOUND. FALLING BACK TO LOCALHOST/DEFAULT.");
+    connectionString = builder.Configuration.GetConnectionString("DefaultConnection") 
+        ?? "Host=localhost;Database=khanpurpos;Username=postgres;Password=password";
 }
 
+// 2. Add Database Context
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString,
         b => b.MigrationsAssembly("Infrastructure")));
 
+// 3. Add Layers & Services
+builder.Services.AddApplicationServices();
 builder.Services.AddScoped<IApplicationDbContext>(provider => 
     provider.GetRequiredService<ApplicationDbContext>());
 
-// 3. Add Identity
 builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
     .AddEntityFrameworkStores<ApplicationDbContext>()
     .AddDefaultTokenProviders();
@@ -44,11 +61,10 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 builder.Services.AddTransient<IIdentityService, IdentityService>();
 builder.Services.AddScoped<ITokenService, TokenService>(); 
 
-// 4. Multi-Tenancy & Security
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddHttpContextAccessor();
 
-// 5. Authentication (JWT)
+// 4. Authentication (JWT)
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -62,13 +78,13 @@ builder.Services.AddAuthentication(options =>
         ValidateAudience = true,
         ValidateLifetime = true,
         ValidateIssuerSigningKey = true,
-        ValidIssuer = builder.Configuration["Jwt:Issuer"],
-        ValidAudience = builder.Configuration["Jwt:Audience"],
-        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
+        ValidIssuer = builder.Configuration["Jwt:Issuer"] ?? "ZentraAPI",
+        ValidAudience = builder.Configuration["Jwt:Audience"] ?? "ZentraClient",
+        IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"] ?? "super_secret_key_12345_make_sure_this_is_long"))
     };
 });
 
-// 6. Controllers
+// 5. Controllers & Swagger
 builder.Services.AddControllers(options => 
     options.Filters.Add<ApiExceptionFilterAttribute>())
     .AddJsonOptions(options => 
@@ -77,8 +93,6 @@ builder.Services.AddControllers(options =>
     });
 
 builder.Services.AddEndpointsApiExplorer();
-
-// 7. Swagger
 builder.Services.AddSwaggerGen(option =>
 {
     option.SwaggerDoc("v1", new OpenApiInfo { Title = "KhanpurPOS API", Version = "v1" });
@@ -93,23 +107,14 @@ builder.Services.AddSwaggerGen(option =>
     });
     option.AddSecurityRequirement(new OpenApiSecurityRequirement
     {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
-            },
-            new string[]{}
-        }
+        { new OpenApiSecurityScheme { Reference = new OpenApiReference { Type=ReferenceType.SecurityScheme, Id="Bearer" } }, new string[]{} }
     });
 });
 
-// 8. CORS
+// 6. CORS
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("AllowAll", policy =>
-    {
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
-    });
+    options.AddPolicy("AllowAll", policy => { policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader(); });
 });
 
 var app = builder.Build();
@@ -127,38 +132,40 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// --- 9. AUTO-MIGRATE & SEED (With Error Logging) ---
+// --- 7. AUTO-MIGRATE & SEED ---
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
     try 
     {
+        Console.WriteLine("🔄 Starting Database Migration...");
         var context = services.GetRequiredService<ApplicationDbContext>();
-        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
-
-        // This will now work because the Connection String is valid
+        
+        // This will verify connectivity
         await context.Database.MigrateAsync();
+        Console.WriteLine("✅ Database Migration Successful!");
 
+        var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
         string[] roleNames = { "Admin", "Cashier" };
         foreach (var roleName in roleNames)
         {
             if (!await roleManager.RoleExistsAsync(roleName))
             {
                 await roleManager.CreateAsync(new IdentityRole(roleName));
+                Console.WriteLine($"✅ Created Role: {roleName}");
             }
         }
-        Console.WriteLine("✅ Database Migration & Seeding Successful!");
     }
     catch (Exception ex)
     {
-        // Check your Railway Logs if this fails again!
-        Console.WriteLine($"❌ MIGRATION ERROR: {ex.Message}");
+        Console.WriteLine($"❌ CRITICAL MIGRATION ERROR: {ex.Message}");
+        if(ex.InnerException != null) Console.WriteLine($"   Inner Error: {ex.InnerException.Message}");
     }
 }
 
 app.Run();
 
-// --- HELPER FUNCTION TO FIX RAILWAY URL ---
+// --- HELPER FUNCTION ---
 static string BuildConnectionString(string databaseUrl)
 {
     var databaseUri = new Uri(databaseUrl);
@@ -170,7 +177,7 @@ static string BuildConnectionString(string databaseUrl)
         Username = userInfo[0],
         Password = userInfo[1],
         Database = databaseUri.LocalPath.TrimStart('/'),
-        SslMode = SslMode.Disable // Or SslMode.Require depending on Railway settings, usually Disable or Require works
+        SslMode = SslMode.Disable // Try SslMode.Require if Disable fails on Railway
     };
     return builder.ToString();
 }
