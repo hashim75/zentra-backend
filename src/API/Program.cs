@@ -12,16 +12,22 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using System.Text;
 using System.Text.Json.Serialization;
+using Npgsql; // Needed for connection string building
 
 var builder = WebApplication.CreateBuilder(args);
 
 // 1. Add Layers
 builder.Services.AddApplicationServices();
 
-// --- 2. DATABASE CONNECTION ---
-// Priority: Railway Environment Variable -> Local AppSettings
-var connectionString = Environment.GetEnvironmentVariable("ConnectionStrings__DefaultConnection") 
-                       ?? builder.Configuration.GetConnectionString("DefaultConnection");
+// --- 2. DATABASE CONNECTION (FIXED FOR RAILWAY) ---
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var databaseUrl = Environment.GetEnvironmentVariable("DATABASE_URL"); // Railway's default var
+
+// If running on Railway, parse the URL. Otherwise use local setting.
+if (!string.IsNullOrEmpty(databaseUrl))
+{
+    connectionString = BuildConnectionString(databaseUrl);
+}
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseNpgsql(connectionString,
@@ -38,11 +44,11 @@ builder.Services.AddIdentity<ApplicationUser, IdentityRole>()
 builder.Services.AddTransient<IIdentityService, IdentityService>();
 builder.Services.AddScoped<ITokenService, TokenService>(); 
 
-// 4. Add Multi-Tenancy & Security
+// 4. Multi-Tenancy & Security
 builder.Services.AddScoped<ICurrentUserService, CurrentUserService>();
 builder.Services.AddHttpContextAccessor();
 
-// 5. Add Authentication (JWT)
+// 5. Authentication (JWT)
 builder.Services.AddAuthentication(options =>
 {
     options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
@@ -62,7 +68,7 @@ builder.Services.AddAuthentication(options =>
     };
 });
 
-// 6. Add Controllers
+// 6. Controllers
 builder.Services.AddControllers(options => 
     options.Filters.Add<ApiExceptionFilterAttribute>())
     .AddJsonOptions(options => 
@@ -72,7 +78,7 @@ builder.Services.AddControllers(options =>
 
 builder.Services.AddEndpointsApiExplorer();
 
-// 7. Add Swagger
+// 7. Swagger
 builder.Services.AddSwaggerGen(option =>
 {
     option.SwaggerDoc("v1", new OpenApiInfo { Title = "KhanpurPOS API", Version = "v1" });
@@ -90,11 +96,7 @@ builder.Services.AddSwaggerGen(option =>
         {
             new OpenApiSecurityScheme
             {
-                Reference = new OpenApiReference
-                {
-                    Type=ReferenceType.SecurityScheme,
-                    Id="Bearer"
-                }
+                Reference = new OpenApiReference { Type = ReferenceType.SecurityScheme, Id = "Bearer" }
             },
             new string[]{}
         }
@@ -106,15 +108,13 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowAll", policy =>
     {
-        policy.AllowAnyOrigin()
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
     });
 });
 
 var app = builder.Build();
 
-// --- PIPELINE CONFIGURATION ---
+// --- PIPELINE ---
 
 app.UseSwagger();
 app.UseSwaggerUI();
@@ -127,7 +127,7 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// --- 9. AUTO-MIGRATE & SEED DATA (CRITICAL FIX) ---
+// --- 9. AUTO-MIGRATE & SEED (With Error Logging) ---
 using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
@@ -136,10 +136,9 @@ using (var scope = app.Services.CreateScope())
         var context = services.GetRequiredService<ApplicationDbContext>();
         var roleManager = services.GetRequiredService<RoleManager<IdentityRole>>();
 
-        // 1. Create Database Tables
+        // This will now work because the Connection String is valid
         await context.Database.MigrateAsync();
 
-        // 2. Create Roles if they don't exist
         string[] roleNames = { "Admin", "Cashier" };
         foreach (var roleName in roleNames)
         {
@@ -148,12 +147,30 @@ using (var scope = app.Services.CreateScope())
                 await roleManager.CreateAsync(new IdentityRole(roleName));
             }
         }
+        Console.WriteLine("✅ Database Migration & Seeding Successful!");
     }
     catch (Exception ex)
     {
-        // Log errors to Railway Console
-        Console.WriteLine($"ERROR During Migration/Seeding: {ex.Message}");
+        // Check your Railway Logs if this fails again!
+        Console.WriteLine($"❌ MIGRATION ERROR: {ex.Message}");
     }
 }
 
 app.Run();
+
+// --- HELPER FUNCTION TO FIX RAILWAY URL ---
+static string BuildConnectionString(string databaseUrl)
+{
+    var databaseUri = new Uri(databaseUrl);
+    var userInfo = databaseUri.UserInfo.Split(':');
+    var builder = new NpgsqlConnectionStringBuilder
+    {
+        Host = databaseUri.Host,
+        Port = databaseUri.Port,
+        Username = userInfo[0],
+        Password = userInfo[1],
+        Database = databaseUri.LocalPath.TrimStart('/'),
+        SslMode = SslMode.Disable // Or SslMode.Require depending on Railway settings, usually Disable or Require works
+    };
+    return builder.ToString();
+}
